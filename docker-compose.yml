@@ -1,0 +1,14 @@
+services:
+  likec4:
+    image: likec4/likec4:latest
+    command: start
+    init: true
+    tty: true
+    volumes:
+      - ./architecture:/data
+    ports:
+      - "127.0.0.1:5173:5173"   # web UI
+      - "127.0.0.1:24678:24678" # HMR websocket
+    environment:
+      HMR_PORT: 24678
+    restart: unless-stopped
