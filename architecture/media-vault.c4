@@ -1,0 +1,84 @@
+specification {
+  element actor {
+    style {
+      shape person
+    }
+  }
+  element system
+  element service
+  element database {
+    style {
+      shape storage
+    }
+  }
+  element queue {
+    style {
+      shape queue
+    }
+  }
+}
+
+model {
+  clients = actor 'Сервисы-пользователи' {
+    description 'Регистрируемые сервисы (Telegram, телефон и т.д.), которые отправляют медиа в хранилище и получают их обратно'
+    technology 'Любой язык'
+  }
+
+  mediaVault = system 'Media Vault' {
+    description 'Централизованное хранилище медиа из разных источников'
+
+    core = service 'Основной сервис' {
+      description 'Регистрирует сервисы-пользователи, выдает токены, проверяет и обрабатывает файлы, формирует метаинформацию'
+      technology 'Python'
+    }
+
+    kafka = queue 'Kafka' {
+      description 'Все взаимодействия сервисов-пользователей с основным сервисом, касающиеся файлов, и топик нотифайера'
+      technology 'Apache Kafka'
+    }
+
+    notifier = service 'Сервис-нотифайер' {
+      description 'Подписки на добавление, перезапись файлов и изменение метаинформации с фильтрами'
+    }
+
+    wrapper = service 'Сервис-обертка' {
+      description 'Единственная точка доступа к файловому хранилищу и базе данных. Прячет конкретное хранилище за собственным интерфейсом'
+      technology 'Python, FastAPI, SQLAlchemy'
+    }
+
+    postgres = database 'База данных' {
+      description 'Сервисы-пользователи, резервирование имен файлов, журнал запросов'
+      technology 'PostgreSQL'
+    }
+
+    fileStorage = database 'Файловое хранилище' {
+      description 'Файлы (file_storage/), json с метаинформацией (metadata/) и директория временного хранения'
+      technology 'Seafile'
+    }
+
+    core -> kafka 'читает запросы, отвечает, выдает одноразовые токены'
+    core -> kafka 'пишет события об изменениях в топик нотифайера'
+    kafka -> notifier 'события об изменениях'
+    core -> wrapper 'резервирует имена, перемещает файлы, пишет метаинформацию и журнал'
+    wrapper -> postgres 'ORM'
+    wrapper -> fileStorage 'чтение и запись файлов'
+  }
+
+  clients -> core 'регистрация по мастер-ключу, получение bearer-token'
+  clients -> kafka 'метаинформация файлов, запросы на загрузку, скачивание, изменение'
+  clients -> wrapper 'загружают и скачивают файлы по одноразовому токену'
+  clients -> notifier 'подписываются на изменения'
+  notifier -> clients 'уведомления'
+}
+
+views {
+  view index {
+    title 'Media Vault — контекст'
+    include *
+  }
+
+  view overview of mediaVault {
+    title 'Media Vault — общая архитектура'
+    include *
+  }
+}
