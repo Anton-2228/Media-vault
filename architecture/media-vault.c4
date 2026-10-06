@@ -46,11 +46,6 @@ model {
       technology 'Python'
     }
 
-    kafka = queue 'Kafka' {
-      description 'Взаимодействие внутренних сервисов: топики сервиса обработки файлов, сервиса подписок и нотифайера'
-      technology 'Apache Kafka'
-    }
-
     subscriptions = service 'Сервис подписок' {
       description 'Принимает подписки с фильтрами, получает события об изменениях и формирует уведомления для подписанных сервисов-пользователей'
     }
@@ -74,17 +69,21 @@ model {
       technology 'Seafile'
     }
 
-    processing -> kafka 'пишет события об изменениях в топик сервиса подписок'
-    kafka -> subscriptions 'события об изменениях'
-    subscriptions -> kafka 'пишет уведомления в топик нотифайера'
-    kafka -> notifier 'уведомления'
+    processing -> subscriptions 'события об изменениях' {
+      technology 'Apache Kafka'
+    }
+    subscriptions -> notifier 'уведомления' {
+      technology 'Apache Kafka'
+    }
     gateway -> auth 'регистрация, получение bearer-token, запрос на проверку bearer-token'
     gateway -> access 'создание операций, запросы по id операции, метаинформация, проверка одноразового токена'
     access -> wrapper 'ведет операции, резервирует имена файлов, хранит одноразовые токены, читает метаинформацию, откатывает изменения'
-    access -> kafka 'пишет задания в топик сервиса обработки файлов'
-    kafka -> processing 'задания на обработку с id операции'
-    processing -> kafka 'пишет результаты выполнения заданий'
-    kafka -> access 'результаты выполнения заданий'
+    access -> processing 'задания на обработку с id операции' {
+      technology 'Apache Kafka'
+    }
+    processing -> access 'результаты выполнения заданий' {
+      technology 'Apache Kafka'
+    }
     gateway -> wrapper 'загрузка и скачивание файлов по одноразовому токену'
     gateway -> subscriptions 'подписки на изменения'
     notifier -> gateway 'уведомления'
